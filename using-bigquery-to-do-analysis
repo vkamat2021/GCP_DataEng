@@ -1,4 +1,5 @@
 
+#Explore bicycle rental data
 ##typical duration for the 10 most common one-way rentals
 '''
 
@@ -47,4 +48,53 @@ ORDER BY
   total_distance DESC
 LIMIT
   5
+'''
+#Explore the weather dataset
+##Rainfall (in mm) for all days in 2015 from a weather station in New York
+'''
+SELECT
+  wx.date,
+  wx.value/10.0 AS prcp
+FROM
+  `bigquery-public-data.ghcn_d.ghcnd_2015` AS wx
+WHERE
+  id = 'USW00094728'
+  AND qflag IS NULL
+  AND element = 'PRCP'
+ORDER BY
+  wx.date
+'''
+# Find correlation between rain and bicycle rentals
+'''
+WITH bicycle_rentals AS (
+  SELECT
+    COUNT(starttime) as num_trips,
+    EXTRACT(DATE from starttime) as trip_date
+  FROM `bigquery-public-data.new_york_citibike.citibike_trips`
+  GROUP BY trip_date
+),
+rainy_days AS
+(
+SELECT
+  date,
+  (MAX(prcp) > 5) AS rainy
+FROM (
+  SELECT
+    wx.date AS date,
+    IF (wx.element = 'PRCP', wx.value/10, NULL) AS prcp
+  FROM
+    `bigquery-public-data.ghcn_d.ghcnd_2015` AS wx
+  WHERE
+    wx.id = 'USW00094728'
+)
+GROUP BY
+  date
+)
+SELECT
+  ROUND(AVG(bk.num_trips)) AS num_trips,
+  wx.rainy
+FROM bicycle_rentals AS bk
+JOIN rainy_days AS wx
+ON wx.date = bk.trip_date
+GROUP BY wx.rainy
 '''
